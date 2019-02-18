@@ -85,7 +85,7 @@ impl Entry {
     }
 }
 
-type StarTuple = (u32, String, String, String);
+type StarTuple = (u32, String, String, NaiveDateTime);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Star {
@@ -93,6 +93,17 @@ struct Star {
     keyword: String,
     user_name: String,
     created_at: NaiveDateTime,
+}
+
+impl Star {
+    fn from_tuple(t: StarTuple) -> Self {
+        Star {
+            id: t.0,
+            keyword: t.1,
+            user_name: t.2,
+            created_at: t.3,
+        }
+    }
 }
 
 #[derive(Serialize)]
