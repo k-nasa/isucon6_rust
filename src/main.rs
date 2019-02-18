@@ -1,5 +1,4 @@
 #![feature(proc_macro_hygiene, decl_macro)]
-#![feature(std)]
 
 #[macro_use]
 extern crate rocket;
@@ -12,7 +11,9 @@ use rocket::http::Cookies;
 use rocket::request::Form;
 use rocket::response::{content, Redirect};
 use rocket_contrib::templates::Template;
+use sha1::{Digest, Sha1};
 use std::cmp::{max, min};
+use std::collections::HashMap;
 
 fn main() {
     rocket::ignite()
@@ -158,7 +159,6 @@ fn post_keyword(keyword: Form<RequestKeyword>, session: Cookies) -> Redirect {
 
 #[get("/register")]
 fn get_register(session: Cookies) -> Template {
-    use std::collections::HashMap;
     let username = username_by_cookie(session);
 
     let mut context: HashMap<&str, String> = HashMap::new();
@@ -174,7 +174,6 @@ struct RequestRegister {
     pw: String,
 }
 
-use sha1::{Digest, Sha1};
 #[post("/register", data = "<register>")]
 fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redirect {
     let salt = rand_string(20);
