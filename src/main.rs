@@ -334,7 +334,45 @@ fn post_star(star: Json<RequestStar>) -> JsonValue {
 }
 
 fn htmlify(entry: &Entry) -> String {
-    "heiojweiofjowefjiwofjoewjwiofoejoijefiowqjfiowrngov".into()
+    if entry.description.is_empty() {
+        return String::new();
+    }
+
+    let pool = dbh();
+    let rows = pool
+        .prep_exec(
+            "SELECT keyword FROM entry ORDER BY CHARACTER_LENGTH(keyword) desc",
+            (),
+        )
+        .unwrap();
+
+    let keywords: Vec<String> = rows
+        .into_iter()
+        .map(|f| mysql::from_row(f.unwrap()))
+        .collect();
+
+    let keyword_re: String = keywords.join("|");
+    let keyword_re = format!("/({})", keyword_re);
+
+    let mut kw2sha = HashMap::new();
+    let re = Regex::new(&keyword_re).unwrap();
+    let result = re.replace_all(&entry.description, |caps: &Captures| {
+        let kw = caps[0].to_string();
+        let digest = format!("isuda_{:x}", Sha1::digest_str(&kw));
+        kw2sha.insert(kw.clone(), digest);
+        String::from(kw)
+    });
+
+    // FIXME resultを本当はurlencodingするほうが良い
+
+    let mut content = result.replace("", "");
+    for (kw, hash) in kw2sha {
+        let url = format!("/keyword/{}", kw);
+        let link = format!("<a href=\"{}\">{}</a>", url, kw);
+        content = content.replace(&hash, &link);
+    }
+
+    content
 }
 
 fn load_stars(entry: &Entry) -> Vec<Star> {
@@ -363,13 +401,10 @@ fn rand_string(l: u32) -> String {
 }
 
 fn username_by_cookie(mut c: Cookies) -> String {
-    println!("{:?}", c);
     let user_id: String = c
         .get_private("user_id")
         .and_then(|cookie| Some(cookie.value().to_string()))
         .unwrap_or("".into());
-
-    println!("{}", user_id);
 
     if user_id.is_empty() {
         return String::new();
