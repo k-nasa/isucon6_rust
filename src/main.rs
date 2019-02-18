@@ -61,4 +61,14 @@ impl Entry {
         }
     }
 }
+
+type StarTuple = (u32, String, String, String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Star {
+    id: u32,
+    keyword: String,
+    user_name: String,
+    created_at: NaiveDateTime,
+}
 }
