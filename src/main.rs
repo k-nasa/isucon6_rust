@@ -1,4 +1,5 @@
 #![feature(proc_macro_hygiene, decl_macro)]
+#![feature(std)]
 
 #[macro_use]
 extern crate rocket;
@@ -6,6 +7,7 @@ extern crate rocket;
 extern crate serde_derive;
 
 use chrono::NaiveDateTime;
+use rand::Rng;
 use rocket::http::Cookies;
 use rocket::request::Form;
 use rocket::response::{content, Redirect};
@@ -166,12 +168,49 @@ fn get_register(session: Cookies) -> Template {
     Template::render("authentication", &context)
 }
 
+#[derive(FromForm)]
+struct RequestRegister {
+    name: String,
+    pw: String,
+}
+
+use sha1::{Digest, Sha1};
+#[post("/register", data = "<register>")]
+fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redirect {
+    let salt = rand_string(20);
+    let pass_digest = format!("{:x}", Sha1::digest_str(&(salt.clone() + &register.pw)));
+    let pool = dbh();
+
+    pool.prep_exec(
+        "INSERT INTO user (name, salt, password, created_at) VALUES (?, ?, ?, NOW())",
+        (&register.name, salt, pass_digest),
+    )
+    .unwrap();
+
+    let id: u32 = pool
+        .first_exec("SELECT LAST_INSERTED_ID() as last_inserted_id", ())
+        .map(|f| mysql::from_row(f.unwrap()))
+        .unwrap();
+
+    session.add_private(rocket::http::Cookie::new("user_id", id.to_string()));
+
+    Redirect::to("/")
+}
+
 fn htmlify(entry: &Entry) -> String {
     "heiojweiofjowefjiwofjoewjwiofoejoijefiowqjfiowrngov".into()
 }
 
 fn load_stars(entry: &Entry) -> Vec<Star> {
     vec![]
+}
+
+fn rand_string(l: u32) -> String {
+    let mut rng = rand::thread_rng();
+
+    (0..l + 1)
+        .map(|_| rng.gen_range(b'a', b'z' + 1) as char)
+        .collect()
 }
 
 fn username_by_cookie(c: Cookies) -> String {
