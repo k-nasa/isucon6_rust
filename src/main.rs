@@ -71,4 +71,66 @@ struct Star {
     user_name: String,
     created_at: NaiveDateTime,
 }
+
+#[get("/?<page>")]
+fn index(page: Option<u32>) -> Template {
+    const PER_PAGE: u32 = 10;
+    let page = page.unwrap_or(1);
+
+    let pool = dbh();
+
+    let rows = pool
+        .prep_exec(
+            "SELECT * FROM entry ORDER BY updated_at desc limit ? offset ?",
+            (PER_PAGE, PER_PAGE * (page - 1)),
+        )
+        .unwrap();
+
+    let mut rows: Vec<Entry> = rows
+        .into_iter()
+        .map(|f| mysql::from_row(f.unwrap()))
+        .map(|f| Entry::from_tuple(f))
+        .collect();
+
+    let entries: Vec<Entry> = Vec::new();
+    for row in &mut rows {
+        row.html = Some(htmlify(&row));
+        row.stars = load_stars(&row);
+    }
+
+    let total_entries: u32 = pool
+        .first_exec("SELECT COUNT(1) AS count FROM entry", ())
+        .map(|f| mysql::from_row(f.unwrap()))
+        .unwrap();
+
+    let last_page: u32 = total_entries / PER_PAGE;
+    // let pages = ((max(1, page - 5))..(min(last_page, page + 5))).collect();
+    let pages = vec![1, 2, 3];
+    Template::render(
+        "index",
+        &TemplateContext {
+            entries,
+            page,
+            last_page,
+            pages,
+            parent: "layout",
+        },
+    )
+}
+
+#[derive(Serialize)]
+struct TemplateContext {
+    entries: Vec<Entry>,
+    page: u32,
+    last_page: u32,
+    pages: Vec<u32>,
+    parent: &'static str,
+}
+
+fn htmlify(entry: &Entry) -> String {
+    String::new()
+}
+
+fn load_stars(entry: &Entry) -> Vec<Star> {
+    vec![]
 }
