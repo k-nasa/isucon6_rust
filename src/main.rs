@@ -181,12 +181,13 @@ struct RequestKeyword {
 }
 
 #[post("/keyword", data = "<keyword>")]
-fn post_keyword(keyword: Form<RequestKeyword>, session: Cookies) -> Redirect {
+fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Redirect {
     let pool = dbh();
-    let user_id: &str = match session.get("user_id") {
-        Some(c) => c.value_raw().unwrap(),
-        None => "",
-    };
+
+    let user_id: String = session
+        .get_private("user_id")
+        .and_then(|cookie| Some(cookie.value().to_string()))
+        .unwrap_or("".into());
 
     pool.prep_exec(
         "INSERT INTO entry (author_id, keyword, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
