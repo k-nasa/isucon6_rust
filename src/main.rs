@@ -9,6 +9,7 @@ extern crate serde_derive;
 
 use chrono::NaiveDateTime;
 use rand::Rng;
+use regex::*;
 use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use rocket::response::{content, Redirect};

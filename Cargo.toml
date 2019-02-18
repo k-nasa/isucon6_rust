@@ -15,6 +15,7 @@ chrono = {version = "0.4.6" , features = ["serde"]}
 sha-1 = "0.7.0"
 rand = "*"
 reqwest="*"
+regex="*"
 [dependencies.rocket_contrib]
 version = "0.4.0"
 default-features = false
