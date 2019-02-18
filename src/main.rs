@@ -14,7 +14,7 @@ use std::cmp::{max, min};
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, initialize])
+        .mount("/", routes![index, initialize, post_keyword, get_register])
         .attach(Template::fairing())
         .launch();
 }
@@ -152,6 +152,18 @@ fn post_keyword(keyword: Form<RequestKeyword>, session: Cookies) -> Redirect {
     ).unwrap();
 
     Redirect::to("/")
+}
+
+#[get("/register")]
+fn get_register(session: Cookies) -> Template {
+    use std::collections::HashMap;
+    let username = username_by_cookie(session);
+
+    let mut context: HashMap<&str, String> = HashMap::new();
+    context.insert("username", username);
+    context.insert("action", "register".into());
+
+    Template::render("authentication", &context)
 }
 
 fn htmlify(entry: &Entry) -> String {
