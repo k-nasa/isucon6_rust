@@ -18,7 +18,7 @@ fn main() {
 }
 
 fn dbh() -> mysql::Pool {
-    mysql::Pool::new("mysql://root:password@localhost:3307/isuda").unwrap()
+    mysql::Pool::new("mysql://isucon:isucon@localhost:3306/isuda").unwrap()
 }
 
 #[get("/initialize")]
