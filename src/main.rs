@@ -292,16 +292,23 @@ fn load_stars(entry: &Entry) -> Vec<Star> {
 fn rand_string(l: u32) -> String {
     let mut rng = rand::thread_rng();
 
-    (0..l + 1)
+    (0..l)
         .map(|_| rng.gen_range(b'a', b'z' + 1) as char)
         .collect()
 }
 
-fn username_by_cookie(c: Cookies) -> String {
-    let user_id: &str = match c.get("user_id") {
-        Some(c) => c.value_raw().unwrap(),
-        None => "",
-    };
+fn username_by_cookie(mut c: Cookies) -> String {
+    println!("{:?}", c);
+    let user_id: String = c
+        .get_private("user_id")
+        .and_then(|cookie| Some(cookie.value().to_string()))
+        .unwrap_or("".into());
+
+    println!("{}", user_id);
+
+    if user_id.is_empty() {
+        return String::new();
+    }
 
     let username: String = dbh()
         .first_exec("Select name from user where id = ?", (user_id,))
