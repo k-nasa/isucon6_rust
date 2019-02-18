@@ -6,7 +6,9 @@ extern crate rocket;
 extern crate serde_derive;
 
 use chrono::NaiveDateTime;
-use rocket::response::content;
+use rocket::http::Cookies;
+use rocket::request::Form;
+use rocket::response::{content, Redirect};
 use rocket_contrib::templates::Template;
 use std::cmp::{max, min};
 
@@ -83,7 +85,7 @@ struct IndexTemplateContext {
 }
 
 #[get("/?<page>")]
-fn index(page: Option<u32>, session: rocket::http::Cookies) -> Template {
+fn index(page: Option<u32>, session: Cookies) -> Template {
     const PER_PAGE: u32 = 10;
     let page = page.unwrap_or(1);
 
@@ -124,9 +126,32 @@ fn index(page: Option<u32>, session: rocket::http::Cookies) -> Template {
             page,
             last_page,
             pages,
+            username,
             parent: "layout",
         },
     )
+}
+
+#[derive(FromForm)]
+struct RequestKeyword {
+    keyword: String,
+    description: String,
+}
+
+#[post("/keyword", data = "<keyword>")]
+fn post_keyword(keyword: Form<RequestKeyword>, session: Cookies) -> Redirect {
+    let pool = dbh();
+    let user_id: &str = match session.get("user_id") {
+        Some(c) => c.value_raw().unwrap(),
+        None => "",
+    };
+
+    pool.prep_exec(
+        "INSERT INTO entry (author_id, keyword, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
+        (user_id, &keyword.keyword, &keyword.description)
+    ).unwrap();
+
+    Redirect::to("/")
 }
 
 fn htmlify(entry: &Entry) -> String {
@@ -137,7 +162,7 @@ fn load_stars(entry: &Entry) -> Vec<Star> {
     vec![]
 }
 
-fn username_by_cookie(c: rocket::http::Cookies) -> String {
+fn username_by_cookie(c: Cookies) -> String {
     let user_id: &str = match c.get("user_id") {
         Some(c) => c.value_raw().unwrap(),
         None => "",
