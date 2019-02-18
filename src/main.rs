@@ -7,7 +7,7 @@ extern crate serde_derive;
 
 use chrono::NaiveDateTime;
 use rand::Rng;
-use rocket::http::Cookies;
+use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use rocket::response::{content, Redirect};
 use rocket_contrib::templates::Template;
@@ -17,7 +17,20 @@ use std::collections::HashMap;
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, initialize, post_keyword, get_register])
+        .mount(
+            "/",
+            routes![
+                index,
+                initialize,
+                get_keyword,
+                post_keyword,
+                get_register,
+                post_register,
+                get_login,
+                post_login,
+                get_logout,
+            ],
+        )
         .attach(Template::fairing())
         .launch();
 }
@@ -129,6 +142,32 @@ fn index(page: Option<u32>, session: Cookies) -> Template {
             page,
             last_page,
             pages,
+            username,
+            parent: "layout",
+        },
+    )
+}
+
+#[derive(Serialize)]
+struct KeywordTemplateContext {
+    entry: Entry,
+    username: String,
+    parent: &'static str,
+}
+
+#[get("/keyword/<keyword>")]
+fn get_keyword(session: Cookies, keyword: String) -> Template {
+    let username = username_by_cookie(session);
+
+    let entry: Entry = dbh()
+        .first_exec("SELECT * FROM entry where keyword = ?", (keyword,))
+        .map(|f| Entry::from_tuple(mysql::from_row(f.unwrap())))
+        .unwrap();
+
+    Template::render(
+        "keyword",
+        &KeywordTemplateContext {
+            entry,
             username,
             parent: "layout",
         },
