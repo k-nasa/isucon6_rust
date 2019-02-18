@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate rocket;
 #[macro_use]
+extern crate rocket_contrib;
+#[macro_use]
 extern crate serde_derive;
 
 use chrono::NaiveDateTime;
@@ -10,6 +12,7 @@ use rand::Rng;
 use rocket::http::{Cookie, Cookies};
 use rocket::request::Form;
 use rocket::response::{content, Redirect};
+use rocket_contrib::json::{Json, JsonValue};
 use rocket_contrib::templates::Template;
 use sha1::{Digest, Sha1};
 use std::cmp::{max, min};
@@ -29,6 +32,7 @@ fn main() {
                 post_register,
                 get_login,
                 post_login,
+                post_star,
                 get_logout,
             ],
         )
@@ -289,6 +293,29 @@ fn get_logout(mut session: Cookies) -> Redirect {
     session.remove_private(Cookie::named("user_id"));
 
     Redirect::to("/")
+}
+
+#[derive(FromForm, Serialize, Deserialize)]
+struct RequestStar {
+    keyword: String,
+    user: String,
+}
+
+#[post("/stars", data = "<star>")]
+fn post_star(star: Json<RequestStar>) -> JsonValue {
+    let user: (u32, String, String) = dbh()
+        .first_exec("Select id from entry where keyword = ?", (&star.keyword,))
+        .map(|f| mysql::from_row(f.unwrap()))
+        .unwrap();
+
+    dbh()
+        .prep_exec(
+            "INSERT INTO star (keyword, user_name, created_at) VALUES (?, ?, NOW())",
+            (&star.keyword, &star.user),
+        )
+        .unwrap();
+
+    json!({"result": "ok"})
 }
 
 fn htmlify(entry: &Entry) -> String {
