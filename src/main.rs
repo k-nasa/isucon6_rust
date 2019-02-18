@@ -24,6 +24,7 @@ fn main() {
                 initialize,
                 get_keyword,
                 post_keyword,
+                delete_keyword,
                 get_register,
                 post_register,
                 get_login,
@@ -172,6 +173,15 @@ fn get_keyword(session: Cookies, keyword: String) -> Template {
             parent: "layout",
         },
     )
+}
+
+#[post("/keyword/<keyword>")]
+fn delete_keyword(keyword: String) -> Redirect {
+    let pool = dbh();
+
+    pool.prep_exec("DELETE from entry where keyword = ?", (keyword,))
+        .unwrap();
+    Redirect::to("/")
 }
 
 #[derive(FromForm)]
