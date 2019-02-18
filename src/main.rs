@@ -175,10 +175,13 @@ struct KeywordTemplateContext {
 fn get_keyword(session: Cookies, keyword: String) -> Template {
     let username = username_by_cookie(session);
 
-    let entry: Entry = dbh()
+    let mut entry: Entry = dbh()
         .first_exec("SELECT * FROM entry where keyword = ?", (keyword,))
         .map(|f| Entry::from_tuple(mysql::from_row(f.unwrap())))
         .unwrap();
+
+    entry.html = Some(htmlify(&entry));
+    entry.stars = load_stars(&entry);
 
     Template::render(
         "keyword",
