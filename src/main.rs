@@ -30,7 +30,6 @@ fn initialize() -> content::Json<&'static str> {
 fn init_query() -> Result<(), mysql::Error> {
     let pool = dbh();
     pool.prep_exec("DELETE FROM entry where id > 7101", ())?;
-    pool.prep_exec("TRUNCATE star", ())?;
     Ok(())
 }
 
