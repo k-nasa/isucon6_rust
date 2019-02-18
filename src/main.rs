@@ -211,13 +211,16 @@ fn get_register(session: Cookies) -> Template {
 #[derive(FromForm)]
 struct RequestRegister {
     name: String,
-    pw: String,
+    password: String,
 }
 
 #[post("/register", data = "<register>")]
 fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redirect {
     let salt = rand_string(20);
-    let pass_digest = format!("{:x}", Sha1::digest_str(&(salt.clone() + &register.pw)));
+    let pass_digest = format!(
+        "{:x}",
+        Sha1::digest_str(&(salt.clone() + &register.password))
+    );
     let pool = dbh();
 
     pool.prep_exec(
@@ -226,8 +229,8 @@ fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redir
     )
     .unwrap();
 
-    let id: u32 = pool
-        .first_exec("SELECT LAST_INSERTED_ID() as last_inserted_id", ())
+    let id: u32 = dbh()
+        .first_exec("Select id from user where name = ?", (&register.name,))
         .map(|f| mysql::from_row(f.unwrap()))
         .unwrap();
 
