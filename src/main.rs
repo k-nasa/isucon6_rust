@@ -36,4 +36,32 @@ fn init_query() -> Result<(), mysql::Error> {
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
+type EntryTuple = (u32, u32, String, String, NaiveDateTime, NaiveDateTime);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Entry {
+    id: u32,
+    user_id: u32,
+    keyword: String,
+    description: String,
+    created_at: NaiveDateTime,
+    updated_at: NaiveDateTime,
+    html: Option<String>,
+    stars: Vec<Star>,
+}
+
+impl Entry {
+    fn from_tuple(t: EntryTuple) -> Self {
+        Entry {
+            id: t.0,
+            user_id: t.1,
+            keyword: t.2,
+            description: t.3,
+            created_at: t.4,
+            updated_at: t.5,
+            html: None,
+            stars: vec![],
+        }
+    }
+}
 }
