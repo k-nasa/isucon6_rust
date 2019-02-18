@@ -381,3 +381,18 @@ fn username_by_cookie(mut c: Cookies) -> String {
 
     username
 }
+
+fn is_spam_content(content: String) -> bool {
+    let mut map = HashMap::new();
+    map.insert("content", content);
+
+    let client = reqwest::Client::new();
+    let mut res = client
+        .post("http://localhost:5050")
+        .json(&map)
+        .send()
+        .unwrap();
+
+    let json: JsonValue = res.json().unwrap();
+    json.get("valid").is_some()
+}
