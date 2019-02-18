@@ -26,6 +26,7 @@
     </div>
 
     <div class="container">
+      <p>Hello <span class="isu-account-name">{{ username }}</span></p>
 
       {% block content %}{% endblock %}
 
