@@ -101,11 +101,11 @@ fn index(page: Option<u32>) -> Template {
         .map(|f| Entry::from_tuple(f))
         .collect();
 
-    let entries: Vec<Entry> = Vec::new();
     for row in &mut rows {
         row.html = Some(htmlify(&row));
         row.stars = load_stars(&row);
     }
+    let entries: Vec<Entry> = rows;
 
     let total_entries: u32 = pool
         .first_exec("SELECT COUNT(1) AS count FROM entry", ())
