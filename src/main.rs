@@ -33,9 +33,6 @@ fn init_query() -> Result<(), mysql::Error> {
     Ok(())
 }
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
 type EntryTuple = (u32, u32, String, String, NaiveDateTime, NaiveDateTime);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
