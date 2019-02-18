@@ -3,16 +3,18 @@
 #[macro_use]
 extern crate rocket;
 #[macro_use]
-extern crate mysql;
+extern crate serde_derive;
 
-use rocket::fairing::AdHoc;
-// use rocket::request::;
+use chrono::NaiveDateTime;
 use rocket::response::content;
-use rocket_contrib::serve::StaticFiles;
-use std::path::{Path, PathBuf};
+use rocket_contrib::templates::Template;
+use std::cmp::{max, min};
 
 fn main() {
-    rocket::ignite().mount("/", routes![index]).launch();
+    rocket::ignite()
+        .mount("/", routes![index, initialize])
+        .attach(Template::fairing())
+        .launch();
 }
 
 fn dbh() -> mysql::Pool {
