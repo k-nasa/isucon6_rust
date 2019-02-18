@@ -239,6 +239,48 @@ fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redir
     Redirect::to("/")
 }
 
+#[get("/login")]
+fn get_login(session: Cookies) -> Template {
+    let username = username_by_cookie(session);
+
+    let mut context: HashMap<&str, String> = HashMap::new();
+    context.insert("username", username);
+    context.insert("action", "login".into());
+
+    Template::render("authentication", &context)
+}
+
+#[derive(FromForm)]
+struct RequestLogin {
+    name: String,
+    password: String,
+}
+
+#[post("/login", data = "<login>")]
+fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Redirect {
+    let user: (u32, String, String) = dbh()
+        .first_exec(
+            "Select id, password, salt from user where name = ?",
+            (&login.name,),
+        )
+        .map(|f| mysql::from_row(f.unwrap()))
+        .unwrap();
+
+    let pass_digest = format!("{:x}", Sha1::digest_str(&(user.2 + &login.password)));
+    if user.1 == pass_digest {
+        session.add_private(Cookie::new("user_id", user.0.to_string()));
+    }
+
+    Redirect::to("/")
+}
+
+#[get("/logout")]
+fn get_logout(mut session: Cookies) -> Redirect {
+    session.remove_private(Cookie::named("user_id"));
+
+    Redirect::to("/")
+}
+
 fn htmlify(entry: &Entry) -> String {
     "heiojweiofjowefjiwofjoewjwiofoejoijefiowqjfiowrngov".into()
 }
