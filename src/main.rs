@@ -337,7 +337,20 @@ fn htmlify(entry: &Entry) -> String {
 }
 
 fn load_stars(entry: &Entry) -> Vec<Star> {
-    vec![]
+    let keyword = &entry.keyword;
+
+    let pool = dbh();
+    let rows = pool
+        .prep_exec("SELECT * FROM star where keyword = ?", (&keyword,))
+        .unwrap();
+
+    let stars: Vec<Star> = rows
+        .into_iter()
+        .map(|f| mysql::from_row(f.unwrap()))
+        .map(|f| Star::from_tuple(f))
+        .collect();
+
+    stars
 }
 
 fn rand_string(l: u32) -> String {
