@@ -112,9 +112,8 @@ fn index(page: Option<u32>) -> Template {
         .map(|f| mysql::from_row(f.unwrap()))
         .unwrap();
 
-    let last_page: u32 = total_entries / PER_PAGE;
-    // let pages = ((max(1, page - 5))..(min(last_page, page + 5))).collect();
-    let pages = vec![1, 2, 3];
+    let last_page: u32 = (total_entries as f64 / PER_PAGE as f64).ceil() as u32;
+    let pages = ((max(1, page as i32 - 5_i32) as u32)..(min(last_page, page + 5) - 1)).collect();
     Template::render(
         "index",
         &IndexTemplateContext {
@@ -128,7 +127,7 @@ fn index(page: Option<u32>) -> Template {
 }
 
 fn htmlify(entry: &Entry) -> String {
-    String::new()
+    "heiojweiofjowefjiwofjoewjwiofoejoijefiowqjfiowrngov".into()
 }
 
 fn load_stars(entry: &Entry) -> Vec<Star> {
