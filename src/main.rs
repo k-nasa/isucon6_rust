@@ -72,6 +72,15 @@ struct Star {
     created_at: NaiveDateTime,
 }
 
+#[derive(Serialize)]
+struct IndexTemplateContext {
+    entries: Vec<Entry>,
+    page: u32,
+    last_page: u32,
+    pages: Vec<u32>,
+    parent: &'static str,
+}
+
 #[get("/?<page>")]
 fn index(page: Option<u32>) -> Template {
     const PER_PAGE: u32 = 10;
@@ -108,7 +117,7 @@ fn index(page: Option<u32>) -> Template {
     let pages = vec![1, 2, 3];
     Template::render(
         "index",
-        &TemplateContext {
+        &IndexTemplateContext {
             entries,
             page,
             last_page,
@@ -116,15 +125,6 @@ fn index(page: Option<u32>) -> Template {
             parent: "layout",
         },
     )
-}
-
-#[derive(Serialize)]
-struct TemplateContext {
-    entries: Vec<Entry>,
-    page: u32,
-    last_page: u32,
-    pages: Vec<u32>,
-    parent: &'static str,
 }
 
 fn htmlify(entry: &Entry) -> String {
