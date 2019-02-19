@@ -502,7 +502,7 @@ fn is_spam_content(content: &str) -> bool {
     let json = json.get("valid").unwrap();
 
     if json.is_boolean() {
-        return json.as_bool().unwrap();
+        return !json.as_bool().unwrap();
     }
 
     false
