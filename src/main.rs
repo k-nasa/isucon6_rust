@@ -257,7 +257,7 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<R
         (user_id, &keyword.keyword, &keyword.description)
     ).unwrap();
 
-    Custom(Status::Ok, Redirect::to("/"))
+    Custom(Status::Found, Redirect::to("/"))
 }
 
 #[get("/register")]
@@ -312,7 +312,7 @@ fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Custo
 
     session.add_private(rocket::http::Cookie::new("user_id", id.to_string()));
 
-    Custom(Status::Ok, Redirect::to("/"))
+    Custom(Status::Found, Redirect::to("/"))
 }
 
 #[get("/login")]
@@ -358,7 +358,7 @@ fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Custom<Redirec
         return Custom(Status::Forbidden, Redirect::to("/"));
     }
 
-    Custom(Status::Ok, Redirect::to("/"))
+    Custom(Status::Found, Redirect::to("/"))
 }
 
 #[get("/logout")]
