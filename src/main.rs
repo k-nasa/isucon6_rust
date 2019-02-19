@@ -256,7 +256,7 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<R
     pool.prep_exec(
         "INSERT INTO entry (author_id, keyword, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
         (user_id, &keyword.keyword, &keyword.description)
-    ).unwrap();
+    );
 
     Custom(Status::Found, Redirect::to("/"))
 }
