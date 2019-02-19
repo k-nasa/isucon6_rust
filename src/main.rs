@@ -417,15 +417,15 @@ fn htmlify(entry: &Entry) -> String {
         .collect();
 
     let keyword_re: String = keywords.join("|");
-    let keyword_re = format!("/({})", keyword_re);
+    let keyword_re = format!("({})", keyword_re);
 
     let mut kw2sha = HashMap::new();
     let re = Regex::new(&keyword_re).unwrap();
     let result = re.replace_all(&entry.description, |caps: &Captures| {
         let kw = caps[0].to_string();
         let digest = format!("isuda_{:x}", Sha1::digest_str(&kw));
-        kw2sha.insert(kw.clone(), digest);
-        String::from(kw)
+        kw2sha.insert(kw.clone(), digest.clone());
+        String::from(digest)
     });
 
     // FIXME resultを本当はurlencodingするほうが良い
