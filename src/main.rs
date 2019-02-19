@@ -181,11 +181,11 @@ struct KeywordTemplateContext {
 }
 
 #[get("/keyword/<keyword>")]
-fn get_keyword(session: Cookies, keyword: String) -> Custom<Option<Template>> {
+fn get_keyword(session: Cookies, keyword: String) -> Custom<Template> {
     let username = username_by_cookie(session);
 
     if username.is_err() {
-        return Custom(Status::Forbidden, None);
+        return Custom(Status::Forbidden, Template::render("", ()));
     }
     let username = username.unwrap();
 
@@ -199,14 +199,14 @@ fn get_keyword(session: Cookies, keyword: String) -> Custom<Option<Template>> {
 
     Custom(
         Status::Ok,
-        Some(Template::render(
+        Template::render(
             "keyword",
             &KeywordTemplateContext {
                 entry,
                 username,
                 parent: "layout",
             },
-        )),
+        ),
     )
 }
 
@@ -226,8 +226,17 @@ struct RequestKeyword {
 }
 
 #[post("/keyword", data = "<keyword>")]
-fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<Option<Redirect>> {
+fn post_keyword(
+    keyword: Form<RequestKeyword>,
+    mut session: Cookies,
+) -> Custom<impl rocket::response::Responder> {
     let pool = dbh();
+    if keyword.keyword.is_empty()
+        || keyword.description.is_empty()
+        || is_spam_content(&keyword.keyword)
+    {
+        return Custom(Status::NotFound, Redirect::to("/"));
+    }
 
     let user_id: String = session
         .get_private("user_id")
@@ -235,7 +244,7 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<O
         .unwrap_or("".into());
 
     if user_id.parse::<u32>().is_err() {
-        return Custom(Status::Forbidden, None);
+        return Custom(Status::Forbidden, Redirect::to("/"));
     }
 
     pool.prep_exec(
@@ -243,7 +252,7 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<O
         (user_id, &keyword.keyword, &keyword.description)
     ).unwrap();
 
-    Custom(Status::Ok, Some(Redirect::to("/")))
+    Custom(Status::Ok, Redirect::to("/"))
 }
 
 #[get("/register")]
@@ -461,7 +470,7 @@ fn username_by_cookie(mut c: Cookies) -> Result<String, ()> {
     Ok(username)
 }
 
-fn is_spam_content(content: String) -> bool {
+fn is_spam_content(content: &str) -> bool {
     let mut map = HashMap::new();
     map.insert("content", content);
 
