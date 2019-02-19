@@ -42,7 +42,8 @@ fn main() {
 }
 
 fn dbh() -> mysql::Pool {
-    mysql::Pool::new("mysql://isucon:isucon@localhost:3306/isuda").unwrap()
+    mysql::Pool::new("mysql://isucon:isucon@localhost:3306/isuda")
+        .expect("failed to create mysql pool")
 }
 
 #[get("/initialize")]
