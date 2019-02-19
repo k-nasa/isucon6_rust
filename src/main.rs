@@ -493,11 +493,13 @@ fn is_spam_content(content: &str) -> bool {
     map.insert("content", content);
 
     let client = reqwest::Client::new();
-    let mut res = client
-        .post("http://localhost:5050")
-        .json(&map)
-        .send()
-        .unwrap();
+    let mut res = client.post("http://localhost:5050/").json(&map).send();
+
+    if res.is_err() {
+        return true;
+    }
+
+    let mut res = res.unwrap();
 
     let json: JsonValue = res.json().unwrap();
     let json = json.get("valid").unwrap();
