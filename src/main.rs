@@ -189,6 +189,10 @@ fn get_keyword(session: Cookies, keyword: String) -> Custom<Template> {
     }
     let username = username.unwrap();
 
+    if keyword.is_empty() {
+        return Custom(Status::BadRequest, Template::render("", ()));
+    }
+
     let mut entry: Entry = dbh()
         .first_exec("SELECT * FROM entry where keyword = ?", (keyword,))
         .map(|f| Entry::from_tuple(mysql::from_row(f.unwrap())))
@@ -211,12 +215,16 @@ fn get_keyword(session: Cookies, keyword: String) -> Custom<Template> {
 }
 
 #[post("/keyword/<keyword>")]
-fn delete_keyword(keyword: String) -> Redirect {
+fn delete_keyword(keyword: String) -> Custom<Redirect> {
+    if keyword.is_empty() {
+        return Custom(Status::BadRequest, Redirect::to(""));
+    }
+
     let pool = dbh();
 
     pool.prep_exec("DELETE from entry where keyword = ?", (keyword,))
         .unwrap();
-    Redirect::to("/")
+    Custom(Status::Ok, Redirect::to("/"))
 }
 
 #[derive(FromForm)]
@@ -282,7 +290,11 @@ struct RequestRegister {
 }
 
 #[post("/register", data = "<register>")]
-fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redirect {
+fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Custom<Redirect> {
+    if register.name.is_empty() || register.password.is_empty() {
+        return Custom(Status::NotFound, Redirect::to("/"));
+    }
+
     let salt = rand_string(20);
     let pass_digest = format!(
         "{:x}",
@@ -303,7 +315,7 @@ fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redir
 
     session.add_private(rocket::http::Cookie::new("user_id", id.to_string()));
 
-    Redirect::to("/")
+    Custom(Status::Ok, Redirect::to("/"))
 }
 
 #[get("/login")]
@@ -333,7 +345,7 @@ struct RequestLogin {
 }
 
 #[post("/login", data = "<login>")]
-fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Redirect {
+fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Custom<Redirect> {
     let user: (u32, String, String) = dbh()
         .first_exec(
             "Select id, password, salt from user where name = ?",
@@ -345,9 +357,11 @@ fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Redirect {
     let pass_digest = format!("{:x}", Sha1::digest_str(&(user.2 + &login.password)));
     if user.1 == pass_digest {
         session.add_private(Cookie::new("user_id", user.0.to_string()));
+    } else {
+        return Custom(Status::Forbidden, Redirect::to("/"));
     }
 
-    Redirect::to("/")
+    Custom(Status::Ok, Redirect::to("/"))
 }
 
 #[get("/logout")]
