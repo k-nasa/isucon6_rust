@@ -10,9 +10,9 @@ extern crate serde_derive;
 use chrono::NaiveDateTime;
 use rand::Rng;
 use regex::*;
-use rocket::http::{Cookie, Cookies};
+use rocket::http::{Cookie, Cookies, Status};
 use rocket::request::Form;
-use rocket::response::{content, Redirect};
+use rocket::response::{content, status::*, Redirect};
 use rocket_contrib::json::{Json, JsonValue};
 use rocket_contrib::templates::Template;
 use sha1::{Digest, Sha1};
@@ -118,13 +118,18 @@ struct IndexTemplateContext {
 }
 
 #[get("/?<page>")]
-fn index(page: Option<u32>, session: Cookies) -> Template {
+fn index(page: Option<u32>, session: Cookies) -> Custom<Template> {
     const PER_PAGE: u32 = 10;
     let page = page.unwrap_or(1);
 
     let pool = dbh();
 
     let username = username_by_cookie(session);
+    if username.is_err() {
+        return Custom(Status::Forbidden, Template::render("", ()));
+    }
+
+    let username = username.unwrap();
 
     let rows = pool
         .prep_exec(
@@ -152,16 +157,19 @@ fn index(page: Option<u32>, session: Cookies) -> Template {
 
     let last_page: u32 = (total_entries as f64 / PER_PAGE as f64).ceil() as u32;
     let pages = ((max(1, page as i32 - 5_i32) as u32)..(min(last_page, page + 5) - 1)).collect();
-    Template::render(
-        "index",
-        &IndexTemplateContext {
-            entries,
-            page,
-            last_page,
-            pages,
-            username,
-            parent: "layout",
-        },
+    Custom(
+        Status::Ok,
+        Template::render(
+            "index",
+            &IndexTemplateContext {
+                entries,
+                page,
+                last_page,
+                pages,
+                username,
+                parent: "layout",
+            },
+        ),
     )
 }
 
@@ -173,8 +181,13 @@ struct KeywordTemplateContext {
 }
 
 #[get("/keyword/<keyword>")]
-fn get_keyword(session: Cookies, keyword: String) -> Template {
+fn get_keyword(session: Cookies, keyword: String) -> Custom<Option<Template>> {
     let username = username_by_cookie(session);
+
+    if username.is_err() {
+        return Custom(Status::Forbidden, None);
+    }
+    let username = username.unwrap();
 
     let mut entry: Entry = dbh()
         .first_exec("SELECT * FROM entry where keyword = ?", (keyword,))
@@ -184,13 +197,16 @@ fn get_keyword(session: Cookies, keyword: String) -> Template {
     entry.html = Some(htmlify(&entry));
     entry.stars = load_stars(&entry);
 
-    Template::render(
-        "keyword",
-        &KeywordTemplateContext {
-            entry,
-            username,
-            parent: "layout",
-        },
+    Custom(
+        Status::Ok,
+        Some(Template::render(
+            "keyword",
+            &KeywordTemplateContext {
+                entry,
+                username,
+                parent: "layout",
+            },
+        )),
     )
 }
 
@@ -210,7 +226,7 @@ struct RequestKeyword {
 }
 
 #[post("/keyword", data = "<keyword>")]
-fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Redirect {
+fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<Option<Redirect>> {
     let pool = dbh();
 
     let user_id: String = session
@@ -218,23 +234,36 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Redirect
         .and_then(|cookie| Some(cookie.value().to_string()))
         .unwrap_or("".into());
 
+    if user_id.parse::<u32>().is_err() {
+        return Custom(Status::Forbidden, None);
+    }
+
     pool.prep_exec(
         "INSERT INTO entry (author_id, keyword, description, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())",
         (user_id, &keyword.keyword, &keyword.description)
     ).unwrap();
 
-    Redirect::to("/")
+    Custom(Status::Ok, Some(Redirect::to("/")))
 }
 
 #[get("/register")]
-fn get_register(session: Cookies) -> Template {
+fn get_register(session: Cookies) -> Custom<Option<Template>> {
     let username = username_by_cookie(session);
+
+    if username.is_err() {
+        return Custom(Status::Forbidden, None);
+    }
+
+    let username = username.unwrap();
 
     let mut context: HashMap<&str, String> = HashMap::new();
     context.insert("username", username);
     context.insert("action", "register".into());
 
-    Template::render("authentication", &context)
+    Custom(
+        Status::Ok,
+        Some(Template::render("authentication", &context)),
+    )
 }
 
 #[derive(FromForm)]
@@ -269,14 +298,23 @@ fn post_register(register: Form<RequestRegister>, mut session: Cookies) -> Redir
 }
 
 #[get("/login")]
-fn get_login(session: Cookies) -> Template {
+fn get_login(session: Cookies) -> Custom<Option<Template>> {
     let username = username_by_cookie(session);
+
+    if username.is_err() {
+        return Custom(Status::Forbidden, None);
+    }
+
+    let username = username.unwrap();
 
     let mut context: HashMap<&str, String> = HashMap::new();
     context.insert("username", username);
     context.insert("action", "login".into());
 
-    Template::render("authentication", &context)
+    Custom(
+        Status::Ok,
+        Some(Template::render("authentication", &context)),
+    )
 }
 
 #[derive(FromForm)]
@@ -400,22 +438,27 @@ fn rand_string(l: u32) -> String {
         .collect()
 }
 
-fn username_by_cookie(mut c: Cookies) -> String {
+fn username_by_cookie(mut c: Cookies) -> Result<String, ()> {
     let user_id: String = c
         .get_private("user_id")
         .and_then(|cookie| Some(cookie.value().to_string()))
         .unwrap_or("".into());
 
     if user_id.is_empty() {
-        return String::new();
+        return Ok(String::new());
     }
 
-    let username: String = dbh()
+    let row = dbh()
         .first_exec("Select name from user where id = ?", (user_id,))
-        .unwrap()
-        .map_or(String::new(), |r| mysql::from_row(r));
+        .unwrap();
 
-    username
+    if row.is_none() {
+        return Err(());
+    }
+
+    let username: String = row.map_or(String::new(), |r| mysql::from_row(r));
+
+    Ok(username)
 }
 
 fn is_spam_content(content: String) -> bool {
