@@ -239,6 +239,7 @@ fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<R
     if keyword.keyword.is_empty()
         || keyword.description.is_empty()
         || is_spam_content(&keyword.keyword)
+        || is_spam_content(&keyword.description)
     {
         return Custom(Status::BadRequest, Redirect::to("/"));
     }
@@ -493,5 +494,11 @@ fn is_spam_content(content: &str) -> bool {
         .unwrap();
 
     let json: JsonValue = res.json().unwrap();
-    json.get("valid").is_some()
+    let json = json.get("valid").unwrap();
+
+    if json.is_boolean() {
+        return json.as_bool().unwrap();
+    }
+
+    false
 }
