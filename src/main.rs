@@ -234,16 +234,13 @@ struct RequestKeyword {
 }
 
 #[post("/keyword", data = "<keyword>")]
-fn post_keyword(
-    keyword: Form<RequestKeyword>,
-    mut session: Cookies,
-) -> Custom<impl rocket::response::Responder> {
+fn post_keyword(keyword: Form<RequestKeyword>, mut session: Cookies) -> Custom<Redirect> {
     let pool = dbh();
     if keyword.keyword.is_empty()
         || keyword.description.is_empty()
         || is_spam_content(&keyword.keyword)
     {
-        return Custom(Status::NotFound, Redirect::to("/"));
+        return Custom(Status::BadRequest, Redirect::to("/"));
     }
 
     let user_id: String = session
