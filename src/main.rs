@@ -344,13 +344,18 @@ struct RequestLogin {
 
 #[post("/login", data = "<login>")]
 fn post_login(mut session: Cookies, login: Form<RequestLogin>) -> Custom<Redirect> {
-    let user: (u32, String, String) = dbh()
+    let row = dbh()
         .first_exec(
             "Select id, password, salt from user where name = ?",
             (&login.name,),
         )
-        .map(|f| mysql::from_row(f.unwrap()))
         .unwrap();
+
+    if row.is_none() {
+        return Custom(Status::Forbidden, Redirect::to("/"));
+    }
+
+    let user: (u32, String, String) = mysql::from_row(row.unwrap());
 
     let pass_digest = format!("{:x}", Sha1::digest_str(&(user.2 + &login.password)));
     if user.1 == pass_digest {
